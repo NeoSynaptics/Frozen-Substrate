@@ -29,6 +29,19 @@ Passive layers receive blurred, depth-attenuated feedforward from L0:
 
 Key result: **mid-entropy stimuli penetrate deepest** (micro-motion > static > fast flicker), matching biological persistence behavior.
 
+### Redesign Pipeline (Production Mode)
+
+A deterministic, mechanically-defined rewrite for production use:
+- No learning, no semantics -- pure local operators
+- `SubstrateStack`: multi-layer lossy transformation with RMS normalization
+- `Readout`: emits Channel A (existence) + Channel B (residual persistence) cubes
+- `Pipeline`: end-to-end video frames -> substrate -> output tensor stream
+- Flood clamping prevents Channel B saturation
+
+### Ghost Neurons
+
+An alternative readout that tracks deviation from an EMA background model. Highlights recently-changed activity patterns across depth layers, useful for novelty detection.
+
 ## Project Structure
 
 ```
@@ -39,11 +52,20 @@ frozen_substrate/         # Core Python package
     coupling.py           # Layer coupling utilities + two-layer demo
     gaussian_pen.py       # Stimulus generators (Gaussian bump, orbit, ring)
     analysis.py           # Plotting utilities for two-layer experiments
+    ghost/                # Ghost Neurons readout module
+    redesign/             # Production pipeline (deterministic, no learning)
+        config.py         # Frozen dataclass configs
+        stack.py          # SubstrateStack (clean multi-layer)
+        readout.py        # Channel A/B readout with flood clamping
+        pipeline.py       # End-to-end: video -> substrate -> cubes
+        video.py          # Frame preprocessing
 
 experiments/              # Runnable demos
-    multilayer_circle_test.py   # Gaussian pen traces a circle, depth propagation
-    retina_channelB_demo.py     # 4-dot test: static vs moving vs flicker vs burst
-    simple_depth_demo.py        # Minimal 20-layer standalone depth demo
+    multilayer_circle_test.py     # Gaussian pen circle + depth propagation
+    retina_channelB_demo.py       # 4-dot persistence test
+    simple_depth_demo.py          # Minimal standalone 20-layer demo
+    ghost_neuron_demo.py          # Ghost neuron novelty 3D visualization
+    redesign_pipeline_demo.py     # Production pipeline on synthetic input
 
 reference/                # V3 minimal reference implementation (self-contained)
     config.py / substrate.py / run_demo.py / metrics.py
@@ -64,6 +86,12 @@ python experiments/retina_channelB_demo.py
 
 # Simple standalone depth demo
 python experiments/simple_depth_demo.py
+
+# Ghost neuron novelty visualization
+python experiments/ghost_neuron_demo.py
+
+# Production pipeline demo
+python experiments/redesign_pipeline_demo.py
 ```
 
 ## Sample Outputs
@@ -89,6 +117,8 @@ python experiments/simple_depth_demo.py
 | **Channel A** | Existence signal (L0 retina buffer) |
 | **Channel B** | Persistence signal (integrated residual novelty across depth) |
 | **Depth Penetration** | How deep a stimulus propagates -- proxy for "perceptual importance" |
+| **Ghost Neurons** | EMA-baseline deviation readout for novelty detection across layers |
+| **Redesign Pipeline** | Deterministic production pipeline: video -> substrate -> output cubes |
 
 ## Status
 
