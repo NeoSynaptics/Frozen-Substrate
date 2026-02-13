@@ -191,6 +191,39 @@ python tests/test_pipeline.py
 | **Ghost Neurons** | EMA-baseline deviation readout (= Channel B concept for research mode) |
 | **Flood Clamping** | Automatic saturation detection and scaling to keep Channel B stable |
 
+## V2: Resonant Feedback Edition
+
+The `v2` module extends the production pipeline with three improvements:
+
+| Feature | What it does |
+|---------|-------------|
+| **Feedback resonance** | Deep layers feed back to L0, amplifying stimuli that penetrate depth -- turns the passive sieve into an active resonator |
+| **Channel C (coherence)** | Measures temporal consistency of deviation: high for structured change, low for random noise |
+| **Local flood clamping** | Per-patch saturation detection instead of global -- more precise stability |
+| **Adaptive input** | Auto-normalizes injection gain based on running signal statistics |
+
+```python
+from frozen_substrate.v2 import PipelineV2, ResonantConfig, ReadoutV2Config
+from frozen_substrate.redesign.config import VideoIOConfig
+
+scfg = ResonantConfig.default()    # 50x50, 10 layers, feedback from deepest 1/3
+rcfg = ReadoutV2Config.for_substrate(scfg)
+pipe = PipelineV2(scfg, rcfg, VideoIOConfig(), seed=0)
+
+out = pipe.process_frame(frame)
+if out:
+    cube, meta = out
+    # cube shape: (n_a + n_b + n_c, H, W)
+    # Channel A: existence, Channel B: persistence, Channel C: coherence
+```
+
+```bash
+# Run V1 vs V2 comparison demo
+python experiments/v2_resonance_demo.py
+```
+
+Output cube layout: `[Channel A | Channel B | Channel C]`
+
 ## Status
 
 Functional research tool. The core dynamics are stable, the production pipeline processes video end-to-end, and the depth filter produces the expected selective behavior: mid-entropy stimuli (micro-motion) persist deepest, while static and high-flicker inputs are suppressed.
