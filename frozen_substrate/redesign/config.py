@@ -29,6 +29,21 @@ class SubstrateConfig:
     # Optional noise (kept tiny; helps avoid exact-zero lock)
     noise_std: float = 0.0
 
+    @classmethod
+    def default(cls) -> SubstrateConfig:
+        """50x50, 10 layers -- good balance for most inputs."""
+        return cls()
+
+    @classmethod
+    def high_res(cls) -> SubstrateConfig:
+        """128x128, 15 layers -- more spatial detail and deeper propagation."""
+        return cls(height=128, width=128, n_layers=15)
+
+    @classmethod
+    def fast(cls) -> SubstrateConfig:
+        """32x32, 6 layers -- quick experiments and real-time preview."""
+        return cls(height=32, width=32, n_layers=6)
+
 
 @dataclass(frozen=True)
 class ReadoutConfig:
@@ -51,6 +66,18 @@ class ReadoutConfig:
     # Temporal integration for Channel B
     integrate_steps: int = 4       # number of substrate steps per output
     b_policy: str = "max"          # "max" or "mean" across integrate window
+
+    @classmethod
+    def for_substrate(cls, scfg: SubstrateConfig) -> ReadoutConfig:
+        """Auto-configure readout layers based on substrate depth."""
+        n = scfg.n_layers
+        a_end = max(1, n // 3)
+        b_start = a_end
+        b_end = max(b_start + 1, n - 1)
+        return cls(
+            a_layers=tuple(range(a_end)),
+            b_layers=tuple(range(b_start, b_end)),
+        )
 
 
 @dataclass(frozen=True)

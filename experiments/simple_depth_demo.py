@@ -5,7 +5,11 @@ This is a standalone reference implementation that does not use the
 main frozen_substrate package -- it's self-contained for clarity.
 """
 
+import os
+
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 # Configuration (v1.0 frozen)
@@ -90,6 +94,10 @@ def main():
 
     depth_map = np.array(depth_map)
 
+    out_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "outputs")
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, "simple_depth_map.png")
+
     plt.figure(figsize=(8, 6))
     plt.imshow(depth_map.T, aspect='auto')
     plt.title("Depth Map (Mean Residual)")
@@ -97,8 +105,10 @@ def main():
     plt.ylabel("Layer")
     plt.colorbar()
     plt.tight_layout()
-    plt.show()
+    plt.savefig(out_path, dpi=180)
+    plt.close()
 
+    print(f"Saved: {out_path}")
     print(f"Depth centroid (last step): {depth_centroid(depth_map)[-1]:.2f}")
     print(f"Persistence score (last step): {persistence_score(depth_map)[-1]:.4f}")
 

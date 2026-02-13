@@ -25,12 +25,18 @@ class Pipeline:
                                height=substrate_cfg.height, width=substrate_cfg.width)
         self.video_cfg = video_cfg
         self.readout_cfg = readout_cfg
-        self._buffer = []
+        self._buffer: list = []
+        self._frame_count = 0
 
     def reset(self) -> None:
         self.substrate.reset()
         self.readout.reset()
         self._buffer.clear()
+        self._frame_count = 0
+
+    @property
+    def frame_count(self) -> int:
+        return self._frame_count
 
     def process_frame(self, frame: np.ndarray) -> Optional[Tuple[np.ndarray, dict]]:
         """Process one input frame.
@@ -41,11 +47,13 @@ class Pipeline:
         stim = frame_to_stim(frame, (self.substrate.cfg.height, self.substrate.cfg.width), self.video_cfg)
         self.substrate.inject_l0(stim, gain=self.video_cfg.input_gain)
         self.substrate.step()
+        self._frame_count += 1
 
         self._buffer.append(self.substrate.x.copy())
 
         if len(self._buffer) >= self.readout_cfg.integrate_steps:
-            window = np.stack(self._buffer[-self.readout_cfg.integrate_steps:], axis=0)
+            window = np.stack(self._buffer, axis=0)
+            self._buffer.clear()
             cube, meta = self.readout.emit_cube(window)
             return cube, meta
 
