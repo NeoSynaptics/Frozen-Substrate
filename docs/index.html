@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frozen Substrate | NeoSynaptics</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0d1117;--surface:#161b22;--border:#21262d;
+  --text:#e6edf3;--muted:#8b949e;--dim:#484f58;
+  --blue:#58a6ff;--orange:#f0883e;--purple:#bc8cff;--green:#3fb950;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;overflow-x:hidden}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+
+header{text-align:center;padding:40px 20px 20px;position:relative}
+header h1{font-size:2.2em;font-weight:700;letter-spacing:-0.5px;margin-bottom:4px}
+header h1 span{color:var(--blue)}
+header .tagline{color:var(--muted);font-size:1.05em;font-style:italic;margin-bottom:6px}
+header .sub{color:var(--dim);font-size:0.85em}
+
+.container{max-width:1100px;margin:0 auto;padding:0 20px}
+
+.viz-section{margin:24px 0}
+.section-label{color:var(--muted);font-size:0.75em;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+
+#layers-wrap{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:16px;position:relative;overflow:hidden;
+}
+#layers-canvas{display:block;width:100%;border-radius:6px;cursor:crosshair;image-rendering:pixelated}
+#layer-labels{display:flex;justify-content:space-around;margin-top:8px;padding:0 2%}
+#layer-labels span{color:var(--muted);font-size:0.72em;font-weight:600;letter-spacing:1px}
+#layer-labels span:first-child{color:var(--blue)}
+#layer-labels span:last-child{color:var(--orange)}
+
+.arrow-bar{
+  height:3px;margin:6px 16px;border-radius:2px;
+  background:linear-gradient(90deg,var(--blue) 0%,var(--blue) 40%,var(--orange) 100%);
+  position:relative;
+}
+.arrow-bar::after{
+  content:'';position:absolute;right:-6px;top:-4px;
+  border:6px solid transparent;border-left:8px solid var(--orange);
+}
+.arrow-label{text-align:center;color:var(--dim);font-size:0.7em;letter-spacing:3px;margin-top:2px}
+
+.readout-row{display:flex;gap:16px;margin:20px 0}
+.readout-card{
+  flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:12px;text-align:center;
+}
+.readout-card canvas{display:block;width:100%;border-radius:4px;image-rendering:pixelated}
+.readout-card .ch-label{margin-top:8px;font-size:0.8em;font-weight:600}
+.readout-card .ch-sub{color:var(--dim);font-size:0.7em;margin-top:2px}
+.ch-a .ch-label{color:var(--blue)}
+.ch-b .ch-label{color:var(--orange)}
+.ch-c .ch-label{color:var(--purple)}
+
+.controls{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  gap:10px;margin:16px 0;
+}
+.controls .hint{color:var(--dim);font-size:0.8em}
+.controls .hint b{color:var(--muted)}
+.btn{
+  background:var(--surface);color:var(--muted);border:1px solid var(--border);
+  padding:6px 16px;border-radius:6px;font-size:0.8em;cursor:pointer;
+  transition:all 0.15s;
+}
+.btn:hover{border-color:var(--muted);color:var(--text)}
+.btn.active{border-color:var(--blue);color:var(--blue)}
+
+.stats{
+  display:flex;gap:24px;justify-content:center;margin:12px 0;
+}
+.stat{text-align:center}
+.stat .val{font-size:1.4em;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .label{color:var(--dim);font-size:0.7em;letter-spacing:1px;text-transform:uppercase}
+.stat.depth .val{color:var(--orange)}
+.stat.coherence .val{color:var(--purple)}
+.stat.fps .val{color:var(--green)}
+
+.depth-meter{
+  margin:12px 0;padding:0 16px;
+}
+.depth-meter .bar-bg{
+  height:6px;background:var(--border);border-radius:3px;overflow:hidden;
+}
+.depth-meter .bar-fill{
+  height:100%;border-radius:3px;transition:width 0.3s;
+  background:linear-gradient(90deg,var(--blue),var(--orange));
+}
+.depth-meter .meter-label{display:flex;justify-content:space-between;margin-top:4px}
+.depth-meter .meter-label span{color:var(--dim);font-size:0.65em}
+
+footer{
+  text-align:center;padding:32px 20px;color:var(--dim);font-size:0.8em;
+  border-top:1px solid var(--border);margin-top:32px;
+}
+footer .brand{color:var(--muted);font-weight:600;font-size:0.9em;margin-bottom:4px}
+
+@media(max-width:600px){
+  header h1{font-size:1.6em}
+  .readout-row{flex-direction:column}
+  .stats{flex-wrap:wrap;gap:16px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span>Frozen</span> Substrate</h1>
+  <div class="tagline">What persists is information</div>
+  <div class="sub">Click on Layer 0 to inject stimuli. Drag to create motion. Watch what survives.</div>
+</header>
+
+<div class="container">
+
+  <div class="viz-section">
+    <div class="section-label">Substrate Stack</div>
+    <div id="layers-wrap">
+      <canvas id="layers-canvas"></canvas>
+      <div id="layer-labels"></div>
+    </div>
+    <div class="arrow-bar"></div>
+    <div class="arrow-label">DATA FLOW</div>
+  </div>
+
+  <div class="depth-meter">
+    <div class="bar-bg"><div class="bar-fill" id="depth-fill" style="width:0%"></div></div>
+    <div class="meter-label"><span>L0 (shallow)</span><span>Penetration depth</span><span>L7 (deep)</span></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat depth"><div class="val" id="stat-depth">0.0</div><div class="label">Depth</div></div>
+    <div class="stat coherence"><div class="val" id="stat-coherence">0.00</div><div class="label">Coherence</div></div>
+    <div class="stat"><div class="val" id="stat-steps">0</div><div class="label">Steps</div></div>
+    <div class="stat fps"><div class="val" id="stat-fps">0</div><div class="label">FPS</div></div>
+  </div>
+
+  <div class="readout-row">
+    <div class="readout-card ch-a">
+      <canvas id="ch-a-canvas"></canvas>
+      <div class="ch-label">Channel A</div>
+      <div class="ch-sub">existence &mdash; what is here right now</div>
+    </div>
+    <div class="readout-card ch-b">
+      <canvas id="ch-b-canvas"></canvas>
+      <div class="ch-label">Channel B</div>
+      <div class="ch-sub">persistence &mdash; what deviates from expectation</div>
+    </div>
+    <div class="readout-card ch-c">
+      <canvas id="ch-c-canvas"></canvas>
+      <div class="ch-label">Channel C</div>
+      <div class="ch-sub">coherence &mdash; structured vs random change</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="hint">
+      <b>Click &amp; drag</b> on L0 to inject &nbsp;|&nbsp;
+      <b>Hold still</b> = static (fades) &nbsp;|&nbsp;
+      <b>Move</b> = mid-entropy (persists)
+    </div>
+    <div>
+      <button class="btn" id="btn-clear" onclick="clearSubstrate()">Clear</button>
+      <button class="btn" id="btn-v2" onclick="toggleV2()">V2 Feedback: OFF</button>
+      <button class="btn" id="btn-auto" onclick="toggleAuto()">Auto Demo</button>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <div class="brand">NeoSynaptics</div>
+  <a href="https://github.com/NeoSynaptics/Frozen-Substrate">github.com/NeoSynaptics/Frozen-Substrate</a>
+</footer>
+
+<script>
+const H = 40, W = 40, N_LAYERS = 8;
+const LEAK = 0.93, FF = 0.08, DEPTH_GAIN = 0.15, CLIP = 1.0;
+const BASELINE_ALPHA = 0.02;
+const FB_GAIN = 0.06, FB_THRESHOLD = 0.04;
+const COHERENCE_ALPHA = 0.015;
+
+// State
+let x = [], baseline = [], devSigned = [], devMag = [];
+for (let l = 0; l < N_LAYERS; l++) {
+  x.push(new Float32Array(H * W));
+  baseline.push(new Float32Array(H * W));
+  devSigned.push(new Float32Array(H * W));
+  devMag.push(new Float32Array(H * W));
+}
+
+let stepCount = 0, v2Enabled = false, autoDemo = false, autoAngle = 0;
+let mouseDown = false, mouseX = -1, mouseY = -1;
+
+// Canvases
+const layersCanvas = document.getElementById('layers-canvas');
+const layersCtx = layersCanvas.getContext('2d');
+const chACanvas = document.getElementById('ch-a-canvas');
+const chACtx = chACanvas.getContext('2d');
+const chBCanvas = document.getElementById('ch-b-canvas');
+const chBCtx = chBCanvas.getContext('2d');
+const chCCanvas = document.getElementById('ch-c-canvas');
+const chCCtx = chCCanvas.getContext('2d');
+
+const CELL = 5;
+const GAP = 4;
+const layerW = W * CELL;
+const totalW = N_LAYERS * layerW + (N_LAYERS - 1) * GAP;
+const totalH = H * CELL;
+
+layersCanvas.width = totalW;
+layersCanvas.height = totalH;
+chACanvas.width = W * CELL;
+chACanvas.height = H * CELL;
+chBCanvas.width = W * CELL;
+chBCanvas.height = H * CELL;
+chCCanvas.width = W * CELL;
+chCCanvas.height = H * CELL;
+
+// Labels
+const labelsDiv = document.getElementById('layer-labels');
+for (let l = 0; l < N_LAYERS; l++) {
+  const sp = document.createElement('span');
+  sp.textContent = 'L' + l;
+  labelsDiv.appendChild(sp);
+}
+
+// Blur
+function blur(arr) {
+  const out = new Float32Array(H * W);
+  for (let y = 0; y < H; y++) {
+    for (let cx = 0; cx < W; cx++) {
+      let sum = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const ny = Math.max(0, Math.min(H - 1, y + dy));
+          const nx = Math.max(0, Math.min(W - 1, cx + dx));
+          const w = (dy === 0 && dx === 0) ? 4 : (Math.abs(dy) + Math.abs(dx) === 1) ? 2 : 1;
+          sum += w * arr[ny * W + nx];
+        }
+      }
+      out[y * W + cx] = sum / 16;
+    }
+  }
+  return out;
+}
+
+function inject(cy, cx, sigma, gain) {
+  for (let y = 0; y < H; y++) {
+    for (let xi = 0; xi < W; xi++) {
+      const d2 = (xi - cx) * (xi - cx) + (y - cy) * (y - cy);
+      x[0][y * W + xi] += gain * Math.exp(-d2 / (2 * sigma * sigma));
+    }
+  }
+}
+
+function step() {
+  // Feedforward
+  for (let l = 1; l < N_LAYERS; l++) {
+    const prev = blur(x[l - 1]);
+    const gain = FF / (1.0 + DEPTH_GAIN * (l - 1));
+    for (let i = 0; i < H * W; i++) {
+      x[l][i] = LEAK * x[l][i] + gain * prev[i];
+      x[l][i] = Math.max(-CLIP, Math.min(CLIP, x[l][i]));
+    }
+  }
+
+  // L0 decay
+  for (let i = 0; i < H * W; i++) {
+    x[0][i] = LEAK * x[0][i];
+    x[0][i] = Math.max(-CLIP, Math.min(CLIP, x[0][i]));
+  }
+
+  // V2 Feedback
+  if (v2Enabled) {
+    const fbStart = Math.max(1, N_LAYERS - 3);
+    const fbCount = N_LAYERS - fbStart;
+    for (let i = 0; i < H * W; i++) {
+      let deepSum = 0;
+      for (let l = fbStart; l < N_LAYERS; l++) {
+        deepSum += Math.abs(x[l][i]);
+      }
+      const deepMean = deepSum / fbCount;
+      const excess = deepMean - FB_THRESHOLD;
+      if (excess > 0) {
+        const gate = Math.min(1, excess / FB_THRESHOLD);
+        x[0][i] += FB_GAIN * gate * deepMean;
+      }
+    }
+    // Re-clip L0
+    for (let i = 0; i < H * W; i++) {
+      x[0][i] = Math.max(-CLIP, Math.min(CLIP, x[0][i]));
+    }
+  }
+
+  // Baseline + coherence
+  for (let l = 0; l < N_LAYERS; l++) {
+    for (let i = 0; i < H * W; i++) {
+      baseline[l][i] = (1 - BASELINE_ALPHA) * baseline[l][i] + BASELINE_ALPHA * x[l][i];
+      const dev = x[l][i] - baseline[l][i];
+      devSigned[l][i] = (1 - COHERENCE_ALPHA) * devSigned[l][i] + COHERENCE_ALPHA * dev;
+      devMag[l][i] = (1 - COHERENCE_ALPHA) * devMag[l][i] + COHERENCE_ALPHA * Math.abs(dev);
+    }
+  }
+
+  stepCount++;
+}
+
+// Color maps
+function blueMap(v) {
+  v = Math.max(0, Math.min(1, Math.abs(v)));
+  const r = Math.floor(13 + v * 75);
+  const g = Math.floor(17 + v * 149);
+  const b = Math.floor(34 + v * 221);
+  return [r, g, b];
+}
+
+function orangeMap(v) {
+  v = Math.max(0, Math.min(1, v));
+  const r = Math.floor(13 + v * 240);
+  const g = Math.floor(17 + v * 119);
+  const b = Math.floor(22 + v * 40);
+  return [r, g, b];
+}
+
+function purpleMap(v) {
+  v = Math.max(0, Math.min(1, v));
+  const r = Math.floor(13 + v * 175);
+  const g = Math.floor(17 + v * 123);
+  const b = Math.floor(34 + v * 221);
+  return [r, g, b];
+}
+
+// Render
+function renderLayers() {
+  const imgData = layersCtx.createImageData(totalW, totalH);
+  const d = imgData.data;
+
+  for (let l = 0; l < N_LAYERS; l++) {
+    const xOff = l * (layerW + GAP);
+    for (let y = 0; y < H; y++) {
+      for (let xi = 0; xi < W; xi++) {
+        const v = x[l][y * W + xi];
+        const [r, g, b] = blueMap(v);
+        for (let py = 0; py < CELL; py++) {
+          for (let px = 0; px < CELL; px++) {
+            const idx = 4 * ((y * CELL + py) * totalW + (xOff + xi * CELL + px));
+            d[idx] = r; d[idx + 1] = g; d[idx + 2] = b; d[idx + 3] = 255;
+          }
+        }
+      }
+    }
+    // Gap between layers
+    if (l < N_LAYERS - 1) {
+      const gapX = xOff + layerW;
+      for (let y = 0; y < totalH; y++) {
+        for (let gx = 0; gx < GAP; gx++) {
+          const idx = 4 * (y * totalW + gapX + gx);
+          d[idx] = 13; d[idx + 1] = 17; d[idx + 2] = 23; d[idx + 3] = 255;
+        }
+      }
+    }
+  }
+  layersCtx.putImageData(imgData, 0, 0);
+}
+
+function renderChannel(ctx, values, colorFn, cw, ch) {
+  const imgData = ctx.createImageData(cw, ch);
+  const d = imgData.data;
+  for (let y = 0; y < H; y++) {
+    for (let xi = 0; xi < W; xi++) {
+      const v = values[y * W + xi];
+      const [r, g, b] = colorFn(v);
+      for (let py = 0; py < CELL; py++) {
+        for (let px = 0; px < CELL; px++) {
+          const idx = 4 * ((y * CELL + py) * cw + (xi * CELL + px));
+          d[idx] = r; d[idx + 1] = g; d[idx + 2] = b; d[idx + 3] = 255;
+        }
+      }
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+function computeReadouts() {
+  // Channel A: mean of L0, L1
+  const chA = new Float32Array(H * W);
+  for (let i = 0; i < H * W; i++) {
+    chA[i] = (Math.abs(x[0][i]) + Math.abs(x[1][i])) / 2;
+  }
+
+  // Channel B: mean deviation of L3-L6
+  const chB = new Float32Array(H * W);
+  for (let i = 0; i < H * W; i++) {
+    let sum = 0;
+    for (let l = 3; l <= 6; l++) {
+      sum += Math.abs(x[l][i] - baseline[l][i]);
+    }
+    chB[i] = sum / 4;
+  }
+
+  // Channel C: coherence of L3-L6
+  const chC = new Float32Array(H * W);
+  for (let i = 0; i < H * W; i++) {
+    let sSum = 0, mSum = 0;
+    for (let l = 3; l <= 6; l++) {
+      sSum += Math.abs(devSigned[l][i]);
+      mSum += devMag[l][i];
+    }
+    chC[i] = mSum > 1e-8 ? Math.min(1, (sSum / 4) / (mSum / 4 + 1e-8)) : 0;
+  }
+
+  return { chA, chB, chC };
+}
+
+function computeDepth() {
+  let weightedSum = 0, totalAct = 0;
+  for (let l = 0; l < N_LAYERS; l++) {
+    let layerAct = 0;
+    for (let i = 0; i < H * W; i++) {
+      layerAct += Math.abs(x[l][i]);
+    }
+    weightedSum += l * layerAct;
+    totalAct += layerAct;
+  }
+  return totalAct > 1e-6 ? weightedSum / totalAct : 0;
+}
+
+// Interaction
+layersCanvas.addEventListener('mousedown', e => { mouseDown = true; updateMouse(e); });
+layersCanvas.addEventListener('mousemove', e => { if (mouseDown) updateMouse(e); });
+layersCanvas.addEventListener('mouseup', () => { mouseDown = false; });
+layersCanvas.addEventListener('mouseleave', () => { mouseDown = false; });
+
+// Touch
+layersCanvas.addEventListener('touchstart', e => { e.preventDefault(); mouseDown = true; updateTouch(e); });
+layersCanvas.addEventListener('touchmove', e => { e.preventDefault(); updateTouch(e); });
+layersCanvas.addEventListener('touchend', () => { mouseDown = false; });
+
+function updateMouse(e) {
+  const rect = layersCanvas.getBoundingClientRect();
+  const scaleX = totalW / rect.width;
+  const px = (e.clientX - rect.left) * scaleX;
+  const py = (e.clientY - rect.top) * (totalH / rect.height);
+
+  // Only inject into L0 area
+  if (px >= 0 && px < layerW) {
+    mouseX = px / CELL;
+    mouseY = py / CELL;
+  }
+}
+
+function updateTouch(e) {
+  const touch = e.touches[0];
+  const rect = layersCanvas.getBoundingClientRect();
+  const scaleX = totalW / rect.width;
+  const px = (touch.clientX - rect.left) * scaleX;
+  const py = (touch.clientY - rect.top) * (totalH / rect.height);
+  if (px >= 0 && px < layerW) {
+    mouseX = px / CELL;
+    mouseY = py / CELL;
+  }
+}
+
+function clearSubstrate() {
+  for (let l = 0; l < N_LAYERS; l++) {
+    x[l].fill(0);
+    baseline[l].fill(0);
+    devSigned[l].fill(0);
+    devMag[l].fill(0);
+  }
+  stepCount = 0;
+}
+
+function toggleV2() {
+  v2Enabled = !v2Enabled;
+  const btn = document.getElementById('btn-v2');
+  btn.textContent = 'V2 Feedback: ' + (v2Enabled ? 'ON' : 'OFF');
+  btn.classList.toggle('active', v2Enabled);
+}
+
+function toggleAuto() {
+  autoDemo = !autoDemo;
+  const btn = document.getElementById('btn-auto');
+  btn.textContent = autoDemo ? 'Stop Demo' : 'Auto Demo';
+  btn.classList.toggle('active', autoDemo);
+}
+
+// Main loop
+let lastTime = performance.now(), frameCount = 0, fpsDisplay = 0;
+
+function loop(now) {
+  frameCount++;
+  if (now - lastTime >= 1000) {
+    fpsDisplay = frameCount;
+    frameCount = 0;
+    lastTime = now;
+  }
+
+  // Inject from mouse
+  if (mouseDown && mouseX >= 0 && mouseY >= 0) {
+    inject(mouseY, mouseX, 1.8, 0.4);
+  }
+
+  // Auto demo
+  if (autoDemo) {
+    autoAngle += 0.04;
+    const cy = H / 2 + 8 * Math.sin(autoAngle);
+    const cx = W / 2 + 8 * Math.cos(autoAngle);
+    inject(cy, cx, 1.8, 0.35);
+
+    // Static square
+    for (let y = 3; y < 8; y++) {
+      for (let xi = 3; xi < 8; xi++) {
+        x[0][y * W + xi] += 0.15;
+      }
+    }
+
+    // Random flicker
+    if (Math.random() > 0.5) {
+      for (let y = H - 8; y < H - 3; y++) {
+        for (let xi = W - 8; xi < W - 3; xi++) {
+          x[0][y * W + xi] += Math.random() * 0.4;
+        }
+      }
+    }
+  }
+
+  // Step substrate (2 steps per frame for responsiveness)
+  step();
+  step();
+
+  // Render
+  renderLayers();
+  const { chA, chB, chC } = computeReadouts();
+  renderChannel(chACtx, chA, blueMap, W * CELL, H * CELL);
+  renderChannel(chBCtx, chB, orangeMap, W * CELL, H * CELL);
+  renderChannel(chCCtx, chC, purpleMap, W * CELL, H * CELL);
+
+  // Stats
+  const depth = computeDepth();
+  const depthPct = Math.min(100, (depth / (N_LAYERS - 1)) * 100);
+  document.getElementById('depth-fill').style.width = depthPct + '%';
+  document.getElementById('stat-depth').textContent = depth.toFixed(1);
+
+  let cohSum = 0;
+  for (let i = 0; i < H * W; i++) cohSum += chC[i];
+  const cohMean = cohSum / (H * W);
+  document.getElementById('stat-coherence').textContent = cohMean.toFixed(2);
+  document.getElementById('stat-steps').textContent = stepCount;
+  document.getElementById('stat-fps').textContent = fpsDisplay;
+
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
