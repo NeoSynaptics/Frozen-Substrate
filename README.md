@@ -58,22 +58,9 @@ python -m frozen_substrate process video.mp4 --preset high_res
 
 ## Architecture
 
-```
- INPUT              SUBSTRATE STACK                                          READOUT              OUTPUT
- ─────              ───────────────                                          ───────              ──────
-
-                    ┌─────────────────────────────────────────────────┐
- Video       ──▶    │  L0  ──▶  L1  ──▶  L2  ──▶  · · ·  ──▶  L9   │  ──▶   Channel A    ──▶   (N,C,H,W)
- Frame              │   │      blur     blur              blur       │        Channel B           .npz
- (.mp4/webcam)      │   ▲      +leak    +leak             +leak      │        Channel C
-                    │   └───── feedback (V2 only) ◀───────────┘      │        (V2 only)
-                    └─────────────────────────────────────────────────┘
-                     inject   ────── depth decay ──────▶  attenuate
-                     + adapt         + RMS norm            + clip
-
- ════════════════════════════════════════════════════════════════════════════════════════════════════════▶
-                                              data flow
-```
+<p align="center">
+  <img src="docs/dataflow.svg" alt="Frozen Substrate Data Flow" width="100%"/>
+</p>
 
 **What survives the depth stack IS the output.** Static stimuli fade. Noise gets filtered. Mid-entropy signals (micro-motion, structured change) penetrate deepest and persist in Channel B.
 
@@ -191,20 +178,7 @@ python tests/test_pipeline.py
 
 ## V2: Resonant Feedback Edition
 
-V2 adds a feedback loop from deep layers back to L0, turning the passive sieve into an active resonator:
-
-```
-                    ┌──────────────────────────────────────────────────────────┐
- Video       ──▶    │  L0  ──▶  L1  ──▶  L2  ──▶  · · ·  ──▶  L9            │
- Frame              │   │      blur     blur              blur    │           │
-                    │   │      +leak    +leak             +leak   │           │  ──▶  Ch A + Ch B + Ch C
-                    │   ▲                                         │           │
-                    │   └──────────── feedback ◀───────────────────┘           │
-                    │                 (gated: only where deep activity         │
-                    │                  exceeds threshold)                      │
-                    └──────────────────────────────────────────────────────────┘
- ═════════════════════════════════════════════════════════════════════════════════════════════════════════▶
-```
+V2 adds a feedback loop from deep layers back to L0 (shown as the dashed purple arc in the diagram above), turning the passive sieve into an active resonator.
 
 | V2 Feature | What it does |
 |------------|-------------|

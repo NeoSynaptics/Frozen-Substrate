@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+  <defs>
+    <linearGradient id="arrow-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#58a6ff" stop-opacity="0.3"/>
+      <stop offset="50%" stop-color="#58a6ff" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#f0883e" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="fb-grad" x1="100%" y1="0%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#bc8cff" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#58a6ff" stop-opacity="0.4"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#8b949e"/>
+    </marker>
+    <marker id="arrowhead-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#58a6ff"/>
+    </marker>
+    <marker id="arrowhead-purple" markerWidth="8" markerHeight="6" refX="0" refY="3" orient="auto">
+      <polygon points="8 0, 0 3, 8 6" fill="#bc8cff"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="960" height="320" rx="12" fill="#0d1117"/>
+  <rect x="1" y="1" width="958" height="318" rx="11" fill="none" stroke="#21262d" stroke-width="1"/>
+
+  <!-- Title labels -->
+  <text x="58" y="32" fill="#8b949e" font-size="10" font-weight="600" letter-spacing="1.5" text-anchor="middle">INPUT</text>
+  <text x="390" y="32" fill="#8b949e" font-size="10" font-weight="600" letter-spacing="1.5" text-anchor="middle">SUBSTRATE STACK</text>
+  <text x="740" y="32" fill="#8b949e" font-size="10" font-weight="600" letter-spacing="1.5" text-anchor="middle">READOUT</text>
+  <text x="900" y="32" fill="#8b949e" font-size="10" font-weight="600" letter-spacing="1.5" text-anchor="middle">OUTPUT</text>
+
+  <!-- Input box -->
+  <rect x="16" y="70" width="84" height="64" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="58" y="96" fill="#e6edf3" font-size="13" font-weight="600" text-anchor="middle">Video</text>
+  <text x="58" y="114" fill="#8b949e" font-size="10" text-anchor="middle">Frame</text>
+
+  <!-- Arrow: input -> preprocess -->
+  <line x1="100" y1="102" x2="126" y2="102" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+  <!-- Preprocess box -->
+  <rect x="134" y="70" width="84" height="64" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="176" y="93" fill="#e6edf3" font-size="11" font-weight="500" text-anchor="middle">grayscale</text>
+  <text x="176" y="107" fill="#e6edf3" font-size="11" font-weight="500" text-anchor="middle">normalize</text>
+  <text x="176" y="121" fill="#e6edf3" font-size="11" font-weight="500" text-anchor="middle">resize</text>
+
+  <!-- Arrow: preprocess -> substrate -->
+  <line x1="218" y1="102" x2="244" y2="102" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+  <!-- Substrate stack box (large) -->
+  <rect x="252" y="48" width="400" height="108" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+
+  <!-- Layer circles -->
+  <circle cx="296" cy="90" r="20" fill="#1a2332" stroke="#58a6ff" stroke-width="1.5"/>
+  <text x="296" y="94" fill="#58a6ff" font-size="12" font-weight="700" text-anchor="middle">L0</text>
+
+  <line x1="316" y1="90" x2="340" y2="90" stroke="#58a6ff" stroke-width="1" stroke-opacity="0.6" marker-end="url(#arrowhead-blue)"/>
+
+  <circle cx="362" cy="90" r="20" fill="#1a2332" stroke="#58a6ff" stroke-width="1.2" stroke-opacity="0.8"/>
+  <text x="362" y="94" fill="#58a6ff" font-size="12" font-weight="600" text-anchor="middle" opacity="0.8">L1</text>
+
+  <line x1="382" y1="90" x2="406" y2="90" stroke="#58a6ff" stroke-width="1" stroke-opacity="0.5" marker-end="url(#arrowhead-blue)"/>
+
+  <circle cx="428" cy="90" r="20" fill="#1a2332" stroke="#58a6ff" stroke-width="1" stroke-opacity="0.6"/>
+  <text x="428" y="94" fill="#58a6ff" font-size="12" font-weight="600" text-anchor="middle" opacity="0.6">L2</text>
+
+  <line x1="448" y1="90" x2="472" y2="90" stroke="#58a6ff" stroke-width="1" stroke-opacity="0.4"/>
+
+  <!-- Dots -->
+  <circle cx="486" cy="90" r="2" fill="#58a6ff" opacity="0.5"/>
+  <circle cx="498" cy="90" r="2" fill="#58a6ff" opacity="0.4"/>
+  <circle cx="510" cy="90" r="2" fill="#58a6ff" opacity="0.3"/>
+
+  <line x1="520" y1="90" x2="544" y2="90" stroke="#58a6ff" stroke-width="1" stroke-opacity="0.3"/>
+
+  <circle cx="566" cy="90" r="20" fill="#1a2332" stroke="#f0883e" stroke-width="1.2" stroke-opacity="0.7"/>
+  <text x="566" y="94" fill="#f0883e" font-size="12" font-weight="600" text-anchor="middle" opacity="0.7">L7</text>
+
+  <line x1="586" y1="90" x2="598" y2="90" stroke="#f0883e" stroke-width="1" stroke-opacity="0.4"/>
+
+  <circle cx="618" cy="90" r="20" fill="#1a2332" stroke="#f0883e" stroke-width="1.5" stroke-opacity="0.5"/>
+  <text x="618" y="94" fill="#f0883e" font-size="12" font-weight="600" text-anchor="middle" opacity="0.5">L9</text>
+
+  <!-- Labels under layers -->
+  <text x="330" y="135" fill="#58a6ff" font-size="9" text-anchor="middle" opacity="0.5">blur + leak</text>
+  <text x="452" y="135" fill="#8b949e" font-size="9" text-anchor="middle" opacity="0.4">depth decay</text>
+  <text x="566" y="135" fill="#f0883e" font-size="9" text-anchor="middle" opacity="0.4">attenuate</text>
+
+  <!-- Arrow: substrate -> readout -->
+  <line x1="652" y1="90" x2="680" y2="90" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+  <!-- Readout box -->
+  <rect x="688" y="48" width="108" height="108" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+
+  <!-- Channel A -->
+  <rect x="700" y="60" width="84" height="24" rx="5" fill="#1a2332" stroke="#58a6ff" stroke-width="1"/>
+  <text x="742" y="76" fill="#58a6ff" font-size="11" font-weight="600" text-anchor="middle">Channel A</text>
+
+  <!-- Channel B -->
+  <rect x="700" y="90" width="84" height="24" rx="5" fill="#1a2332" stroke="#f0883e" stroke-width="1"/>
+  <text x="742" y="106" fill="#f0883e" font-size="11" font-weight="600" text-anchor="middle">Channel B</text>
+
+  <!-- Channel C -->
+  <rect x="700" y="120" width="84" height="24" rx="5" fill="#1a2332" stroke="#bc8cff" stroke-width="1"/>
+  <text x="742" y="136" fill="#bc8cff" font-size="11" font-weight="600" text-anchor="middle">Channel C</text>
+
+  <!-- Arrow: readout -> output -->
+  <line x1="796" y1="90" x2="838" y2="90" stroke="#8b949e" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+  <!-- Output box -->
+  <rect x="846" y="58" width="96" height="78" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="894" y="86" fill="#e6edf3" font-size="13" font-weight="600" text-anchor="middle">(N,C,H,W)</text>
+  <text x="894" y="104" fill="#8b949e" font-size="11" text-anchor="middle">tensor cube</text>
+  <text x="894" y="120" fill="#8b949e" font-size="10" text-anchor="middle">.npz</text>
+
+  <!-- Channel labels on the right side of readout -->
+  <text x="700" y="56" fill="#8b949e" font-size="8" font-weight="500">existence</text>
+  <text x="700" y="88" fill="#8b949e" font-size="8" font-weight="500">persistence</text>
+  <text x="700" y="118" fill="#8b949e" font-size="8" font-weight="500">coherence (V2)</text>
+
+  <!-- V2 Feedback arc -->
+  <path d="M 618 110 L 618 188 L 296 188 L 296 110" fill="none" stroke="url(#fb-grad)" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <polygon points="296,114 292,122 300,122" fill="#bc8cff" opacity="0.7"/>
+
+  <!-- V2 label -->
+  <rect x="408" y="176" width="88" height="22" rx="4" fill="#1a1028" stroke="#bc8cff" stroke-width="1" stroke-opacity="0.5"/>
+  <text x="452" y="191" fill="#bc8cff" font-size="10" font-weight="600" text-anchor="middle">V2 feedback</text>
+  <text x="452" y="210" fill="#8b949e" font-size="9" text-anchor="middle" opacity="0.5">gated: only when deep activity exceeds threshold</text>
+
+  <!-- Long data flow arrow -->
+  <rect x="16" y="260" width="926" height="2" rx="1" fill="url(#arrow-grad)"/>
+  <polygon points="942,261 930,255 930,267" fill="#f0883e" opacity="0.9"/>
+
+  <!-- Data flow label -->
+  <text x="480" y="290" fill="#8b949e" font-size="11" font-weight="500" text-anchor="middle" letter-spacing="3">DATA FLOW</text>
+
+  <!-- Corner accent dots -->
+  <circle cx="24" cy="261" r="3" fill="#58a6ff" opacity="0.4"/>
+</svg>
