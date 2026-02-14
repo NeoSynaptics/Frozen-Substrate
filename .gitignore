@@ -12,3 +12,5 @@ venv/
 *.swo
 .DS_Store
 Thumbs.db
+benchmark_results/
+data/

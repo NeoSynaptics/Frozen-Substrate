@@ -1,2 +1,9 @@
 numpy>=1.24
 matplotlib>=3.7
+
+# Optional — video processing
+# opencv-python>=4.8
+
+# Benchmark (A vs A+B ablation)
+torch>=2.0
+scikit-learn>=1.3
