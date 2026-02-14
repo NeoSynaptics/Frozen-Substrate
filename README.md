@@ -58,43 +58,46 @@ python -m frozen_substrate process video.mp4 --preset high_res
 
 ## Architecture
 
-### FrozenCoreV3 (Layer 0 -- Active Substrate)
+```
+ INPUT              SUBSTRATE STACK                                          READOUT              OUTPUT
+ ─────              ───────────────                                          ───────              ──────
 
-A 2D grid where each cell:
+                    ┌─────────────────────────────────────────────────┐
+ Video       ──▶    │  L0  ──▶  L1  ──▶  L2  ──▶  · · ·  ──▶  L9   │  ──▶   Channel A    ──▶   (N,C,H,W)
+ Frame              │   │      blur     blur              blur       │        Channel B           .npz
+ (.mp4/webcam)      │   ▲      +leak    +leak             +leak      │        Channel C
+                    │   └───── feedback (V2 only) ◀───────────┘      │        (V2 only)
+                    └─────────────────────────────────────────────────┘
+                     inject   ────── depth decay ──────▶  attenuate
+                     + adapt         + RMS norm            + clip
 
-- **Predicts its own next state** using a local self-prediction coefficient
-- Has **8-neighbor weighted synapses** that learn via Hebbian-like rules gated by prediction error
-- Maintains **survival energy** -- cells that consistently fail to predict are pruned
-- Emits **surprise** (prediction error above baseline) into a **Coordination Field (C)** that diffuses spatially
-- The field has **three temporal projections** (fast/mid/slow EMA) that modulate coupling, learning, and death at different timescales
+ ════════════════════════════════════════════════════════════════════════════════════════════════════════▶
+                                              data flow
+```
 
-### Multi-Layer Depth Stack (L1+ -- Passive Layers)
+**What survives the depth stack IS the output.** Static stimuli fade. Noise gets filtered. Mid-entropy signals (micro-motion, structured change) penetrate deepest and persist in Channel B.
 
-Passive layers receive blurred, depth-attenuated feedforward from L0:
-- No learning, no death -- stable over long runs (10k+ steps)
-- Depth-scaled gain decay prevents saturation
-- Activity penetration depth serves as a proxy for stimulus persistence
+---
 
-### Production Pipeline (Redesign)
+### Layer 0 -- Active Substrate (FrozenCoreV3)
 
-A deterministic, mechanically-defined rewrite for production use:
-- No learning, no semantics -- pure local operators
-- `SubstrateStack`: multi-layer lossy transformation with RMS normalization
-- `Readout`: emits Channel A (existence) + Channel B (residual persistence) cubes
-- `Pipeline`: end-to-end video frames -> substrate -> output tensor stream
-- Flood clamping prevents Channel B saturation
+A 2D grid where each cell predicts its own next state. 8-neighbor weighted synapses learn via Hebbian rules gated by prediction error. Cells that consistently fail to predict are pruned. Surprise emits into a Coordination Field that diffuses spatially, with three temporal projections (fast/mid/slow EMA) modulating coupling, learning, and death.
 
-### Retina + Channel B (Advanced Mode)
+### Layers 1+ -- Passive Depth Stack
 
-- **L0 retina buffer**: EMA accumulator that registers existence
-- **Z-score deviation detection** with band-pass gating on L0 output
-- **Channel B** (`IntegratedResidual`): tracks temporal deviation from baseline across depth
+Passive layers receive blurred, depth-attenuated feedforward from L0. No learning, no death -- stable over long runs (10k+ steps). Depth-scaled gain decay prevents saturation. **Penetration depth = perceptual importance.**
 
-Key result: **mid-entropy stimuli penetrate deepest** (micro-motion > static > fast flicker), matching biological persistence behavior.
+### Readout -- Channel A / B / C
 
-### Ghost Neurons
+| Channel | Source | What it captures |
+|---------|--------|-----------------|
+| **A** | Shallow layers (L0-L2) | What exists right now |
+| **B** | Mid layers (L3-L6) | What persists -- deviation from expectation that survives depth |
+| **C** | Mid layers (V2 only) | How structured the deviation is -- temporal coherence |
 
-An alternative readout that tracks deviation from an EMA background model. Conceptually equivalent to Channel B in the production pipeline -- both compute `|activation - EMA(activation)|`. The standalone class is useful for research experiments with the full FrozenCoreV3 substrate.
+### Retina Mode (Research)
+
+Z-score band-pass gating on L0 output -- only mid-entropy deviations propagate to depth. `IntegratedResidual` tracks Channel B as a temporal integral of residual novelty. Ghost neurons (`|activation - EMA(activation)|`) are conceptually equivalent to Channel B.
 
 ## Project Structure
 
@@ -109,12 +112,17 @@ frozen_substrate/         # Core Python package
     gaussian_pen.py       # Stimulus generators (Gaussian bump, orbit, ring)
     analysis.py           # Plotting utilities for two-layer experiments
     ghost/                # Ghost Neurons readout module
-    redesign/             # Production pipeline (deterministic, no learning)
+    redesign/             # V1 production pipeline (deterministic, no learning)
         config.py         # Frozen dataclass configs with presets
         stack.py          # SubstrateStack (clean multi-layer)
         readout.py        # Channel A/B readout with flood clamping
         pipeline.py       # End-to-end: video -> substrate -> cubes
         video.py          # Frame preprocessing
+    v2/                   # V2: resonant feedback edition
+        config.py         # ResonantConfig + ReadoutV2Config
+        stack.py          # ResonantStack (feedforward + feedback)
+        readout.py        # ReadoutV2 (A + B + C, local flood)
+        pipeline.py       # PipelineV2
 
 experiments/              # Runnable demos
     multilayer_circle_test.py     # Gaussian pen circle + depth propagation
@@ -123,11 +131,13 @@ experiments/              # Runnable demos
     ghost_neuron_demo.py          # Ghost neuron novelty 3D visualization
     redesign_pipeline_demo.py     # Production pipeline on synthetic input
     video_demo.py                 # Video processing demo (file or synthetic)
+    v2_resonance_demo.py          # V1 vs V2 comparison
 
-tests/                    # Smoke tests
+tests/                    # Smoke tests (24 total)
     test_core.py          # FrozenCoreV3 stability and correctness
     test_stack.py         # SubstrateStack, Readout, ops
     test_pipeline.py      # End-to-end pipeline, buffer management, presets
+    test_v2.py            # Resonant stack, coherence, feedback, local flood
 
 reference/                # V3 minimal reference implementation (self-contained)
     config.py / substrate.py / run_demo.py / metrics.py
@@ -179,51 +189,47 @@ python tests/test_pipeline.py
 ### Channel B -- 3D Novelty Structure (Late)
 ![3d late](outputs/v3_l1plus_3d_late.png)
 
-## Key Concepts
-
-| Concept | Description |
-|---------|-------------|
-| **Frozen Core** | The active L0 substrate with prediction, plasticity, and survival |
-| **Coordination Field** | Spatial field driven by surprise that gates plasticity and pruning |
-| **Channel A** | Existence signal -- shallow layer states |
-| **Channel B** | Persistence signal -- integrated residual novelty across depth |
-| **Depth Penetration** | How deep a stimulus propagates -- proxy for "perceptual importance" |
-| **Ghost Neurons** | EMA-baseline deviation readout (= Channel B concept for research mode) |
-| **Flood Clamping** | Automatic saturation detection and scaling to keep Channel B stable |
-
 ## V2: Resonant Feedback Edition
 
-The `v2` module extends the production pipeline with three improvements:
+V2 adds a feedback loop from deep layers back to L0, turning the passive sieve into an active resonator:
 
-| Feature | What it does |
-|---------|-------------|
-| **Feedback resonance** | Deep layers feed back to L0, amplifying stimuli that penetrate depth -- turns the passive sieve into an active resonator |
-| **Channel C (coherence)** | Measures temporal consistency of deviation: high for structured change, low for random noise |
-| **Local flood clamping** | Per-patch saturation detection instead of global -- more precise stability |
-| **Adaptive input** | Auto-normalizes injection gain based on running signal statistics |
+```
+                    ┌──────────────────────────────────────────────────────────┐
+ Video       ──▶    │  L0  ──▶  L1  ──▶  L2  ──▶  · · ·  ──▶  L9            │
+ Frame              │   │      blur     blur              blur    │           │
+                    │   │      +leak    +leak             +leak   │           │  ──▶  Ch A + Ch B + Ch C
+                    │   ▲                                         │           │
+                    │   └──────────── feedback ◀───────────────────┘           │
+                    │                 (gated: only where deep activity         │
+                    │                  exceeds threshold)                      │
+                    └──────────────────────────────────────────────────────────┘
+ ═════════════════════════════════════════════════════════════════════════════════════════════════════════▶
+```
+
+| V2 Feature | What it does |
+|------------|-------------|
+| **Feedback resonance** | Deep layers feed back to L0 -- stimuli that penetrate deep get amplified, stimuli that don't get nothing |
+| **Channel C** | Temporal coherence: `\|EMA(signed_dev)\| / EMA(\|dev\|)` -- 1.0 = structured, 0.0 = random noise |
+| **Local flood** | Per-patch saturation detection instead of global |
+| **Adaptive input** | Auto-normalizes injection gain from running signal statistics |
 
 ```python
 from frozen_substrate.v2 import PipelineV2, ResonantConfig, ReadoutV2Config
 from frozen_substrate.redesign.config import VideoIOConfig
 
-scfg = ResonantConfig.default()    # 50x50, 10 layers, feedback from deepest 1/3
+scfg = ResonantConfig.default()
 rcfg = ReadoutV2Config.for_substrate(scfg)
 pipe = PipelineV2(scfg, rcfg, VideoIOConfig(), seed=0)
 
-out = pipe.process_frame(frame)
-if out:
-    cube, meta = out
-    # cube shape: (n_a + n_b + n_c, H, W)
-    # Channel A: existence, Channel B: persistence, Channel C: coherence
+out = pipe.process_frame(frame)    # -> (cube, meta) or None
+# cube shape: (n_a + n_b + n_c, H, W)
 ```
 
 ```bash
-# Run V1 vs V2 comparison demo
-python experiments/v2_resonance_demo.py
+python experiments/v2_resonance_demo.py    # V1 vs V2 side-by-side comparison
+python tests/test_v2.py                    # 9 V2 smoke tests
 ```
-
-Output cube layout: `[Channel A | Channel B | Channel C]`
 
 ## Status
 
-Functional research tool. The core dynamics are stable, the production pipeline processes video end-to-end, and the depth filter produces the expected selective behavior: mid-entropy stimuli (micro-motion) persist deepest, while static and high-flicker inputs are suppressed.
+Functional research tool. The production pipeline processes video end-to-end and the depth filter produces the expected selective behavior: mid-entropy stimuli (micro-motion) persist deepest, while static and high-flicker inputs are suppressed.
