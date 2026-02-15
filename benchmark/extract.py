@@ -65,6 +65,31 @@ def extract_clip_features(
     return np.stack(raw_aligned, axis=0), np.stack(channel_b, axis=0)
 
 
+def compute_temporal_diff(clip_raw_list):
+    """Compute frame-to-frame temporal differences for each clip.
+
+    This is the simplest possible temporal feature — one line of numpy.
+    If the substrate doesn't beat this, the multi-layer cascade adds
+    complexity without benefit.
+
+    Parameters
+    ----------
+    clip_raw_list : list of np.ndarray, each shape (T, 1, H, W)
+
+    Returns
+    -------
+    diff_list : list of np.ndarray, each shape (T, 1, H, W)
+        diff[0] = zeros (no previous frame), diff[t] = raw[t] - raw[t-1].
+    """
+    diff_list = []
+    for raw in clip_raw_list:
+        diff = np.zeros_like(raw)
+        if raw.shape[0] > 1:
+            diff[1:] = raw[1:] - raw[:-1]
+        diff_list.append(diff)
+    return diff_list
+
+
 def extract_dataset(
     clips: List[np.ndarray],
     labels: np.ndarray,
